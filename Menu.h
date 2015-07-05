@@ -1,130 +1,80 @@
-#ifndef Menu_h
-#define Menu_h
-#include "Arduino.h"
+//
+//  menuNode.h
+//  Menu
+//
+//  Created by Maurice Streubel on 30.06.15.
+//  Copyright (c) 2015 Maurice Streubel. All rights reserved.
+//
 
+#ifndef __Menu__menuNode__
+#define __Menu__menuNode__
 
-// Length definitions
-#define StringLength 15
-#define UnitLength 4
+#include <stdio.h>
+#include "parameterItem.h"
+#include "coordinateItem.h"
+#include "valueItem.h"
+#include "item.h"
 
-//***************************************************************
+// Forward declaration
+class ParameterItem;
+class CoordinateItem;
+class ValueItem;
 
-//Holds the arrays of Items needed for the menu
-class MenuStructure
+class Menu: public Item
 {
+  Menu *parent;                       // Pointer to the parent menu.
+  Menu *child;                        // Pointer to the child menu.
+
+  Menu *next;                         // Pointer to next item
+  Menu *last;                         // Pointer to last item
+
+  Menu *curentMenu;                   // Pointer to curent selected Menu
+  ParameterItem *curentParameter;         // Pointer to curent selected Parameter
+  CoordinateItem *curentCoordinate;       // Pointer to curent selected Coordinate
+  ValueItem *curentValue;                 // Pointer to curent selected Value
+
+  const char *empty;                      // emtpy char
+  void printLine(char *text);
+  void printSubMenu();
+  void printParameter();
+  void printCoordinate();
+  void printValue();
 
 public:
-    struct MenuNode {
-        char *name;  // The name for this this node.
-        MenuStructure *parent;   // Pointer to the parent menu.
-        MenuStructure *neighborUp;  // Pointer to the neighbor menu.
-        MenuStructure *neighborDown;  // Pointer to the neighbor menu.
-        MenuStructure *child;  // Pointer to the child menu.
-    };
+  Menu(char* definition,int length); // Constructor
+  ~Menu();                            // Deconstructor
 
-    struct Parameter {
-        char *name;  // The name for this this node.
-        MenuStructure *parent;   // Pointer to the parent menu.
+  void setRelation(Menu *parent, Menu *child, Menu *next, Menu *last);
 
-        float value;
-        char *unit;
-        float step;
-        int index;
-    };
+  void setParent(Menu *parent);
+  Menu* getParent();
 
-    struct Value {
-        char *name;  // The name for this this node.
-        MenuStructure *parent;   // Pointer to the parent menu.
+  void setChild(Menu *child);
+  Menu* getChild();
 
-        float value;
-        char *unit;
-        int index;
-    };
+  void setNext(Menu *next);
+  Menu* getNext();
 
-    struct Coordinate {
-        char *name;  // The name for this this node.
-        MenuStructure *parent;   // Pointer to the parent menu.
+  void setLast(Menu *last);
+  Menu* getLast();
 
-        float x;
-        float y;
-        int index;
-    };
+  void setCurentParameter(ParameterItem *child);
+  ParameterItem *getCurentParameter();
+  void curentParameterLast();
+  void curentParameterNext();
 
-    // Max count of available items
-    int iAvailableItems=0;
+  void setCurentCoordinate(CoordinateItem *child);
+  CoordinateItem *getCurentCoordinate();
+  void curentCoordinateLast();
+  void curentCoordinateNext();
 
-    // Initialize Menu and have Interrupt handled by Menu class
-    MenuStructure(char *definiiton, int length);
-    ~MenuStructure();
+  void setCurentValue(ValueItem *child);
+  ValueItem *getCurentValue();
+  void curentValueLast();
+  void curentValueNext();
 
-    char* getNodeName();
-
-    void setRelations(MenuStructure *parentNode, MenuStructure *childNode, MenuStructure *neighborNodeUp, MenuStructure *neighborNodeDown);
-    void setParent(MenuStructure *parentNode);
-    void setChild(MenuStructure *childNode);
-    void setNeighborUp(MenuStructure *neighborNodeUp);
-    void setNeighborDown(MenuStructure *neighborNodeDown);
-
-    //Print Structures
-    void printStructure(int (*funcPrintSerial)(char*text));
-    void printNeighbors(int (*funcPrintSerial)(char*text));
-    void printParamters(int (*funcPrintSerial)(char*text), int index);
-    void printCoordinates(int (*funcPrintSerial)(char*text), int index);
-    void printValues(int (*funcPrintSerial)(char*text), int index);
-
-    // Setter for Parameter
-    void setParameterName(char *name, int index);
-    void setParameterValue(float value, int index);
-    void setParameterUnit(char *unit, int index);
-    void setParameterStep(float step, int index);
-    void setParameterIndex(int index);
-    // Getter Paremeter
-    char* getParameterName(int index);
-    float getParameterValue(int index);
-    char* getParameterUnit(int index);
-    float getParameterStep(int index);
-
-    // Setter for Value
-    void setValueName(char *name, int index);
-    void setValueValue(float value, int index);
-    void setValueUnit(char *unit, int index);
-    void setValueIndex(int index);
-    // Getter for Value
-    char* getValueName(int index);
-    float getValueValue(int index);
-    char* getValueUnit(int index);
-
-    // Setter for Coordinate
-    void setCoordinateName(char *name, int index);
-    void setCoordinateX(int x, int index);
-    void setCoordinateY(int y, int index);
-    // Getter for Coordinate
-    char* getCoordinateName(int index);
-    float getCoordinateX(int index);
-    float getCoordinateY(int index);
-
-    // Handle Selections
-    void incrementSelection();
-    void decrementSelection();
-    MenuStructure* select();
-    MenuStructure* getSelectedMenu(MenuStructure* Menu, int iSelected, int iCheck);
-
-private:
-    MenuNode    Item;
-    // Pointer to arrays of items
-    Parameter   *Parameters;
-    Value       *Values;
-    Coordinate  *Coordinates;
-
-    char emptyChar[6];
-    // Max count of items
-    int iChildNodes = 0;
-    int iParameteItems = 0;
-    int iCoordinateItems = 0;
-    int iValueItemes = 0;
-
-
-    int iSelectedItem=0;
+  void (*print)(char *text);                // Function pointer to printing function
+  void printMenu();
 };
 
-#endif
+#endif /* defined(__Menu__menuNode__) */

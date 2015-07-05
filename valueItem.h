@@ -37,7 +37,7 @@ public:
   void setNext(ValueItem *next);
   ValueItem* getNext();
 
-  void setLast(ValueItem *next);
+  void setLast(ValueItem *last);
   ValueItem* getLast();
 
 
