@@ -1,4 +1,4 @@
-#include <Menu.h>
+#include <menu.h>
 //
 //  Menu.ino
 //  Menu
@@ -6,87 +6,71 @@
 //  Created by Maurice Streubel on 17.06.15.
 //  Copyright (c) 2015 Maurice Streubel. All rights reserved.
 //
-
+void printSerial(char* text){
+  Serial.print(text);       // prints a label
+}
 //*************************************************
 //Create Menuelemtents
-char MenuDefinitionMain[] = ":1M$Main>n$Shots>S$Last Shot/s>S$Last Exp/s>S$Next Shot/s>S$Next Exp/s";
-        char MenuDefinitionExposure[] =":2M$Exposure";
-            char MenuDefinitionExposureGraph[] =":3G$Graph";
-            char MenuDefinitionExposureDuration[] =":3M$Duration<P$Start Time/s-1|0<PS$End Time/s-1|100";
-            char MenuDefinitionExposureRamp[] =":3M$Ramp<P$Start at/s-2|30<P$End at/s-3|60<Cx0y0$C1<Cx0.5y0$C2<Cx0.5y0.5$C3<Cx0.5y1$C4<Cx1y1$C5";
-        char MenuDefinitionTimelaps[] =":2M$Timelaps";
-            char MenuDefinitionTimelapsGraph[] =":3G$Graph";
-            char MenuDefinitionTimelapsDuration[] =":3M$Duration<P$Start Period/s-1|0<P$End Period/s-1|3600";
-            char MenuDefinitionTimelapsRamp[] =":3M$Ramp<P$Start at/s-1|900<P$End at/s-1|1800<Cx0y0$C1<Cx0.5y0$C2<Cx0.5y0.5$C3<Cx0.5y1$C4<Cx1y1$C5";
+char MenuDefinitionMain[] = ":M$Main>n$Shots>S$Last Shot/s>S$Last Exp/s>S$Next Shot/se>S$Next Exp/s";
+  char MenuDefinitionExposure[] =":M$Exposure";
+    char MenuDefinitionExposureGraph[] =":M$Graph";
+    char MenuDefinitionExposureDuration[] =":M$Duration<P$Start Time/s-1|0<PS$End Time/s-1|100";
+    char MenuDefinitionExposureRamp[] =":M$Ramp<P$Start at/s-2|30<P$End at/s-3|60<C(0)0$C1<C(0.5)0$C2<C(0.5)0.5$C3<C(0.5)1$C4<C(1)1$C5";
+  char MenuDefinitionTimelaps[] =":M$Timelaps";
+    char MenuDefinitionTimelapsGraph[] =":M$Graph";
+    char MenuDefinitionTimelapsDuration[] =":M$Duration<P$Start Period/s-1|0<P$End Period/s-1|3600";
+    char MenuDefinitionTimelapsRamp[] =":M$Ramp<P$Start at/s-1|900<P$End at/s-1|1800<C(0)0$C1<C(0.5)0$C2<C(0.5)0.5$C3<C(0.5)1$C4<C(1)1$C5";
+//Init Menus
+Menu MainNode = *new Menu(MenuDefinitionMain,sizeof(MenuDefinitionMain));
+  Menu ExposureNode = *new Menu(MenuDefinitionExposure,sizeof(MenuDefinitionExposure));
+    Menu ExposureGraphNode = *new Menu(MenuDefinitionExposureGraph,sizeof(MenuDefinitionExposureGraph));
+    Menu ExposureDurationNode = *new Menu(MenuDefinitionExposureDuration,sizeof(MenuDefinitionExposureDuration));
+    Menu ExposureRampNode = *new Menu(MenuDefinitionExposureRamp,sizeof(MenuDefinitionExposureRamp));
+  Menu TimelapsNode = *new Menu(MenuDefinitionTimelaps,sizeof(MenuDefinitionTimelaps));
+    Menu TimelapsGraphNode = *new Menu(MenuDefinitionTimelapsGraph,sizeof(MenuDefinitionTimelapsGraph));
+    Menu TimelapsDurationNode = *new Menu(MenuDefinitionTimelapsDuration,sizeof(MenuDefinitionTimelapsDuration));
+    Menu TimelapsRampNode = *new Menu(MenuDefinitionTimelapsRamp,sizeof(MenuDefinitionTimelapsRamp));
 
-    //Init Menus
-    MenuStructure menuRoot = *new MenuStructure(MenuDefinitionMain, sizeof(MenuDefinitionMain));
-
-        MenuStructure exposureSub = *new MenuStructure(MenuDefinitionExposure, sizeof(MenuDefinitionExposure));
-
-            MenuStructure exposureGraphSub = *new MenuStructure(MenuDefinitionExposureGraph, sizeof(MenuDefinitionExposureGraph));
-
-            MenuStructure exposureDurationSub = *new MenuStructure(MenuDefinitionExposureDuration, sizeof(MenuDefinitionExposureDuration));
-
-            MenuStructure exposureRampSub = *new MenuStructure(MenuDefinitionExposureRamp, sizeof(MenuDefinitionExposureRamp));
-
-        MenuStructure timelapsSub = *new MenuStructure(MenuDefinitionTimelaps, sizeof(MenuDefinitionTimelaps));
-
-            MenuStructure timelapsGraphSub = *new MenuStructure(MenuDefinitionTimelapsGraph, sizeof(MenuDefinitionTimelapsGraph));
-
-            MenuStructure timelapsDurationSub = *new MenuStructure(MenuDefinitionTimelapsDuration, sizeof(MenuDefinitionTimelapsDuration));
-
-            MenuStructure timelapsRampSub = *new MenuStructure(MenuDefinitionTimelapsRamp, sizeof(MenuDefinitionTimelapsRamp));
-
-
-//Prepare Current Item ,its the item to work with
-MenuStructure *curentItem = &menuRoot;
 //*************************************************
 //*************************************************
 // Create function used by a function pointer
-int printSerial(char* text){
-     Serial.println(text);       // prints a label
-}
-
-int (*funcPrintSerial)(char*text);
 //*************************************************
 
 void setup(){
-    //Assign function pointer to function
-    funcPrintSerial = printSerial;
-    Serial.begin(9600);
+  Serial.begin(9600);
 
-    //Set Relations
-    menuRoot.setRelations(NULL, &exposureSub, NULL, NULL);
-        exposureSub.setRelations(&menuRoot, &exposureGraphSub, NULL, &timelapsSub);
-            exposureGraphSub.setRelations(&exposureSub, NULL, NULL, &exposureDurationSub);
-            exposureDurationSub.setRelations(&exposureSub, NULL, &exposureGraphSub, &exposureRampSub);
-            exposureRampSub.setRelations(&exposureSub, NULL, &exposureDurationSub, NULL);
-        timelapsSub.setRelations(&menuRoot, &timelapsGraphSub, &exposureSub, NULL);
-            timelapsGraphSub.setRelations(&timelapsSub, NULL, NULL, &timelapsDurationSub);
-            timelapsDurationSub.setRelations(&timelapsSub, NULL, &timelapsGraphSub, &timelapsRampSub);
-            timelapsRampSub.setRelations(&timelapsSub, NULL, &timelapsDurationSub, NULL);
-    //***Testing function Pointer
-    curentItem->printStructure(printSerial);
-    Serial.println("\r\n");
-    curentItem->incrementSelection();
-    curentItem->incrementSelection();
-    curentItem->incrementSelection();
-    //curentItem->decrementSelection();
+  MainNode.setRelation(NULL, &ExposureNode, NULL, NULL);
+    ExposureNode.setRelation(&MainNode, &ExposureGraphNode, &TimelapsNode, NULL);
+      ExposureGraphNode.setRelation(&ExposureNode, NULL, &ExposureDurationNode, NULL);
+      ExposureDurationNode.setRelation(&ExposureNode, NULL, &ExposureRampNode, &ExposureGraphNode);
+      ExposureRampNode.setRelation(&ExposureNode, NULL, NULL, &ExposureDurationNode);
+    TimelapsNode.setRelation(&MainNode, &TimelapsGraphNode, NULL, &ExposureNode);
+      TimelapsGraphNode.setRelation(&TimelapsNode, NULL, &TimelapsDurationNode, NULL);
+      TimelapsDurationNode.setRelation(&TimelapsNode, NULL, &TimelapsRampNode, &TimelapsGraphNode);
+      TimelapsRampNode.setRelation(&TimelapsNode, NULL, NULL, &TimelapsDurationNode);
 
-    curentItem = curentItem->select();
-    curentItem->printStructure(printSerial);
-    Serial.println("\r\n");
-    curentItem->decrementSelection();
-    curentItem->decrementSelection();
+  MainNode.print = printSerial;
+  ExposureNode.print = printSerial;
+  ExposureGraphNode.print = printSerial;
+  ExposureDurationNode.print = printSerial;
+  ExposureRampNode.print = printSerial;
+  TimelapsNode.print = printSerial;
+  TimelapsGraphNode.print = printSerial;
+  TimelapsRampNode.print = printSerial;
+  TimelapsDurationNode.print = printSerial;
 
-
-    curentItem = curentItem->select();
-    curentItem->printStructure(printSerial);
+  MainNode.printMenu();
+  //ExposureNode.printMenu();
+  //ExposureGraphNode.printMenu();
+  //ExposureDurationNode.printMenu();
+  //ExposureRampNode.printMenu();
+  //TimelapsNode.printMenu();
+  //TimelapsGraphNode.printMenu();
+  //TimelapsRampNode.printMenu();
+  //TimelapsDurationNode.printMenu();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
 
 }
-

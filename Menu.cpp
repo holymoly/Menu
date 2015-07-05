@@ -1,600 +1,418 @@
-#include "Menu.h"
-#include <stdlib.h>
-#include <string.h>
+//
+//  Menu.cpp
+//  Menu
+//
+//  Created by Maurice Streubel on 30.06.15.
+//  Copyright (c) 2015 Maurice Streubel. All rights reserved.
+//
 
+#include "menu.h"
+#include <Arduino.h>
 
-using namespace std;
-
-char* getSubCharArray(char *charArray,int start,int end)
+// Return Sub string till end character
+char* getSubCharArray(char *charArray,int start,int maxLength)
 {
-    char *tempChar = new char[end - start];
-    int count = end - start;
-    for (int i = 0; i < count; ++i)
-    {
-        tempChar[i] = charArray[start+i];
-    }
-    return tempChar;
+  int i = start;
+
+  while (charArray[i] != '|' and
+         charArray[i] != '/' and
+         charArray[i] != '-' and
+         charArray[i] != '<' and
+         charArray[i] != '>' and
+         charArray[i] != '$' and
+         charArray[i] != '(' and
+         charArray[i] != ')' and
+         i <= maxLength)
+  {
+    i++;
+  };
+  int count = i - start;
+  char *tempChar = new char[count];
+
+  for (int i = 0; i < count; ++i)
+  {
+    tempChar[i] = charArray[start+i];
+  }
+  tempChar[i] = '\0';
+  return tempChar;
 }
 
-// Encoder right
-void MenuStructure::incrementSelection()
+void Menu::printSubMenu()
 {
-    if (iSelectedItem <= iAvailableItems)
-    {
-        iSelectedItem++;
-    }else{
-        iSelectedItem=0;
-    }
+  char tab[] = " ";
+
+  this->print(tab);
+  this->printLine(curentMenu->getName());
+  this->print('\0');
 }
 
-// Encode left
-void MenuStructure::decrementSelection()
+void Menu::printParameter()
 {
-    if (iSelectedItem > 0)
-    {
-        iSelectedItem--;
-    }else{
-        iSelectedItem=iAvailableItems;
-    }
+  char tab[] = "  \0";
+  char space[] = " \0";
+  char temp[15];
+
+  this->print(tab);
+  this->print(curentParameter->getName());
+  this->print(space);
+  dtostrf(curentParameter->getValue(), 1 ,4 , temp);
+  this->print(temp);
+  this->printLine(curentParameter->getUnit());
+
 }
 
-MenuStructure* MenuStructure::getSelectedMenu(MenuStructure* Menu, int iSelected, int iCheck)
+void Menu::printCoordinate()
 {
-    if(iSelected==iCheck){
-        return Menu;
-    }else{
-        return getSelectedMenu(Menu->Item.neighborDown, iSelected, iCheck+1);
-    }
+  char tab[] = "  \0";
+  char space[] = " \0";
+  char temp[15];
+
+  this->print(tab);
+  this->print(curentCoordinate->getName());
+  this->print(space);
+  sprintf(temp,"(");
+  this->print(temp);
+  dtostrf(curentCoordinate->getX(), 1 ,1 , temp);
+  this->print(temp);
+  sprintf(temp,";");
+  this->print(temp);
+  dtostrf(curentCoordinate->getY(), 1 ,1 , temp);
+  this->print(temp);
+  sprintf(temp,")");
+  this->printLine(temp);
 }
 
-//Encoder press
-MenuStructure* MenuStructure::select()
+void Menu::printValue()
 {
-    if (iSelectedItem < iChildNodes)    // If Menu was selected
-    {
-        return getSelectedMenu(this->Item.child, iSelectedItem, 0);
-    }else{                              // If Parameter or Coordinate was selected
-        return this;
-    }
+  char tab[] = "  \0";
+  char space[] = " \0";
+  char temp[15];
+
+  this->print(tab);
+  this->print(curentValue->getName());
+  this->print(space);
+  dtostrf(curentParameter->getValue(), 1 ,4 , temp);
+  this->print(temp);
+  this->printLine(curentValue->getUnit());
 }
 
-void MenuStructure::printStructure(int (*funcPrintSerial)(char*text))
+// Constructor
+Menu::Menu(char* definition, int length)
 {
-    //Reset available items if new menu is printed
-    iAvailableItems = 0;
-    //Reset selected item if new menu is printed
-    iSelectedItem = 0;
-    // Print Header
-    funcPrintSerial(this->getNodeName());
-    funcPrintSerial("--------");
-    if (this->Item.child) {
-        this->Item.child->printNeighbors(funcPrintSerial);
-    }
-    iChildNodes = iAvailableItems;
-    this->printParamters(funcPrintSerial, 0);
-    this->printCoordinates(funcPrintSerial, 0);
-    this->printValues(funcPrintSerial, 0);
-}
+  empty = new char{'\0'};
+  curentParameter = NULL;
+  curentCoordinate = NULL;
+  curentValue = NULL;
 
-void MenuStructure::printNeighbors(int (*funcPrintSerial)(char*text))
-{
-    // Increment available items on each draw
-    this->Item.parent->iAvailableItems++;
-    char temp[16] = " ";
-    strcat(temp,this->getNodeName());
-    funcPrintSerial(temp);
-    if (this->Item.neighborDown) {
-        this->Item.neighborDown->printNeighbors(funcPrintSerial);
-    }
-}
-
-void MenuStructure::printParamters(int (*funcPrintSerial)(char*text), int index)
-{
-    // Increment available items on each draw
-    if (iParameteItems > index) {
-        iAvailableItems++;
-        char temp[16] = " ";
-        strcat(temp,this->Parameters[index].name);
-        funcPrintSerial(temp);
-        this->printParamters(funcPrintSerial, index+1);
-    }
-}
-
-void MenuStructure::printCoordinates(int (*funcPrintSerial)(char*text), int index)
-{
-    // Increment available items on each draw
-    if (iCoordinateItems > index) {
-        iAvailableItems++;
-        char temp[16] = " ";
-        strcat(temp,this->Coordinates[index].name);
-        funcPrintSerial(temp);
-        this->printCoordinates(funcPrintSerial, index+1);
-    }
-}
-
-void MenuStructure::printValues(int (*funcPrintSerial)(char*text), int index)
-{
-    if (iValueItemes > index) {
-        char temp[16] = " ";
-        strcat(temp,this->Values[index].name);
-        funcPrintSerial(temp);
-        this->printValues(funcPrintSerial, index+1);
-    }
-}
-
-//***************************************************************
-MenuStructure::MenuStructure(char *definition, int length)
-{
-    int yParameteItems = 0;
-    int yCoordinateItems = 0;
-    int yValueItemes = 0;
-    strncpy(emptyChar,"empty",6);
-
-    // determine array sizes
-    for (int i=0; i < length; ++i) {
-        if (definition[i]=='<') {
-            if (definition[i+1]=='P') {
-                iParameteItems++;
-            }
-            if (definition[i+1]=='C') {
-                iCoordinateItems++;
-            }
+  for (int i=0; i < length; ++i) {
+    if (definition[i]==':') {
+      i++;
+      if (definition[i]=='M') {
+        // Main
+        while (definition[i] != '<' and
+               definition[i] != '>' and
+               i <= length)
+        {
+          ++i;
+          switch (definition[i]) {
+            case '$': // Start of name part
+              this->setName(getSubCharArray(definition, i+1, length));break;
+            default:
+              break;
+          }
         }
-        if (definition[i]=='>') {
-            iValueItemes++;
-        }
+        --i;
+      }
     }
+    if (definition[i]=='<') {
+      ++i;
+      if (definition[i]=='P') {
+        // Parameter
+        if (!curentParameter) { // first new Parameter
+          curentParameter = new ParameterItem;
+          curentParameter->setLast(NULL);
+          curentParameter->setNext(NULL);
+          curentParameter->setUnit(NULL);
+        }else{ //if more then one Parameter
+          ParameterItem *temp = new ParameterItem;
+          temp->setLast(NULL);
+          temp->setNext(NULL);
+          temp->setUnit(NULL);
 
-    //Item.name = name;
-
-    if(iParameteItems>0)
-    {
-        Parameters = new MenuStructure::Parameter[iParameteItems];
-    }
-    if(iCoordinateItems>0)
-    {
-        Coordinates = new MenuStructure::Coordinate[iCoordinateItems];
-    }
-    if(iValueItemes>0)
-    {
-        Values = new MenuStructure::Value[iValueItemes];
-    }
-    Item.name = new char[15];
-
-
-    // Parse Menu string
-    for (int i=0; i < length; ++i) {
-        //Menu Section
-        if (definition[i] == ':') {
-            i = i + 3;
-
-            if (definition[i] == '$') {
-                int start = i+1;
-                i++;
-                while (definition[i] != '|' and
-                       definition[i] != '/' and
-                       definition[i] != '-' and
-                       definition[i] != '<' and
-                       definition[i] != '>' and
-                       definition[i] != '$' and
-                       i <= length)
-                {
-                    i++;
-                };
-                Item.name = getSubCharArray(definition, start, i);
-            }
+          curentParameter->setNext(temp);
+          temp->setLast(curentParameter);
+          curentParameter = temp;
         }
 
-        if (definition[i] == '<') {
-            // Parameter Section
-            if (definition[i+1] == 'P') {
-                i++;
-                while (definition[i] != '<' and
-                       definition[i] != '>' and
-                       i <= length)
-                {
-                    i++;
-                    //Name Section
-                    if (definition[i] == '$') {
-                        int start = i+1;
-                        i++;
-                        while (definition[i] != '|' and
-                               definition[i] != '/' and
-                               definition[i] != '-' and
-                               definition[i] != '<' and
-                               definition[i] != '>' and
-                               definition[i] != '$' and
-                               i <= length)
-                        {
-                            i++;
-                        };
-                        Parameters[yParameteItems].name = getSubCharArray(definition, start, i);
-                    }
-                    // Value Section
-                    if (definition[i] == '|') {
-                        int start = i+1;
-                        i++;
-                        while (definition[i] != '|' and
-                               definition[i] != '/' and
-                               definition[i] != '-' and
-                               definition[i] != '<' and
-                               definition[i] != '>' and
-                               definition[i] != '$' and
-                               definition[i] != 'x' and
-                               definition[i] != 'y' and
-                               i <= length)
-                        {
-                            i++;
-                        };
-                        Parameters[yParameteItems].value = atof(getSubCharArray(definition, start, i));
-                    }
-                    // Unit Section
-                    if (definition[i] == '/') {
-                        int start = i+1;
-                        i++;
-                        while (definition[i] != '|' and
-                               definition[i] != '/' and
-                               definition[i] != '-' and
-                               definition[i] != '<' and
-                               definition[i] != '>' and
-                               definition[i] != '$' and
-                               definition[i] != 'x' and
-                               definition[i] != 'y' and
-                               i <= length)
-                        {
-                            i++;
-                        };
-                        Parameters[yParameteItems].unit = getSubCharArray(definition, start, i);
-                        i--;
-                    }
-                    // Step Section
-                    if (definition[i] == '-') {
-                        int start = i+1;
-                        i++;
-                        while (definition[i] != '|' and
-                               definition[i] != '/' and
-                               definition[i] != '-' and
-                               definition[i] != '<' and
-                               definition[i] != '>' and
-                               definition[i] != '$' and
-                               definition[i] != 'x' and
-                               definition[i] != 'y' and
-                               i <= length)
-                        {
-                            i++;
-                        };
-                        Parameters[yParameteItems].step = atof(getSubCharArray(definition, start, i));
-                        i--;
-                    }
-                };
-                ++yParameteItems;
-                i--;            }
-            // Coordinate Section
-            if (definition[i+1] == 'C') {
-                i++;
-                while (definition[i] != '<' and
-                       definition[i] != '>' and
-                       i <= length)
-                {
-                    i++;
-                    //Name Section
-                    if (definition[i] == '$') {
-                        int start = i+1;
-                        i++;
-                        while (definition[i] != '|' and
-                               definition[i] != '/' and
-                               definition[i] != '-' and
-                               definition[i] != '<' and
-                               definition[i] != '>' and
-                               definition[i] != '$' and
-                               i <= length)
-                        {
-                            i++;
-                        };
-                        Coordinates[yCoordinateItems].name = getSubCharArray(definition, start, i);
-                    }
-                    // X Section
-                    if (definition[i] == 'x') {
-                        int start = i+1;
-                        i++;
-                        while (definition[i] != '|' and
-                               definition[i] != '/' and
-                               definition[i] != '-' and
-                               definition[i] != '<' and
-                               definition[i] != '>' and
-                               definition[i] != '$' and
-                               definition[i] != 'x' and
-                               definition[i] != 'y' and
-                               i <= length)
-                        {
-                            i++;
-                        };
-                        Coordinates[yCoordinateItems].x = atof(getSubCharArray(definition, start, i));
-                    }
-                    // y Section
-                    if (definition[i] == 'y') {
-                        int start = i+1;
-                        i++;
-                        while (definition[i] != '|' and
-                               definition[i] != '/' and
-                               definition[i] != '-' and
-                               definition[i] != '<' and
-                               definition[i] != '>' and
-                               definition[i] != '$' and
-                               definition[i] != 'x' and
-                               definition[i] != 'y' and
-                               i <= length)
-                        {
-                            i++;
-                        };
-                        Coordinates[yCoordinateItems].y = atof(getSubCharArray(definition, start, i));
-                        i--;
-                    }
-
-                };
-                ++yCoordinateItems;
-                i--;
-            }
+        while (definition[i] != '<' and
+               definition[i] != '>' and
+               i <= length)
+        {
+          ++i;
+          switch (definition[i]) {
+            case '$': // Start of name part
+              curentParameter->setName(getSubCharArray(definition, i+1, length));break;
+            case '|': // Start of value part
+              curentParameter->setValue(atof(getSubCharArray(definition, i+1, length)));break;
+            case '/': // Start of unit part
+              curentParameter->setUnit(getSubCharArray(definition, i+1, length));break;
+            case '-': // Start of step part
+              curentParameter->setStep(atof(getSubCharArray(definition, i+1, length)));break;
+            default:
+              break;
+          }
         }
-        // Values Section
-        if (definition[i] == '>') {
-            i++;
-            while (definition[i] != '<' and
-                   definition[i] != '>' and
-                   i <= length)
-            {
-                i++;
-                //Name Section
-                if (definition[i] == '$') {
-                    int start = i+1;
-                    i++;
-                    while (definition[i] != '|' and
-                           definition[i] != '/' and
-                           definition[i] != '-' and
-                           definition[i] != '<' and
-                           definition[i] != '>' and
-                           definition[i] != '$' and
-                           i <= length)
-                    {
-                        i++;
-                    };
-                    Values[yValueItemes].name = getSubCharArray(definition, start, i);
-                }
-                //Unit Section
-                if (definition[i] == '/') {
-                    int start = i+1;
-                    i++;
-                    while (definition[i] != '|' and
-                           definition[i] != '/' and
-                           definition[i] != '-' and
-                           definition[i] != '<' and
-                           definition[i] != '>' and
-                           definition[i] != '$' and
-                           i <= length)
-                    {
-                        i++;
-                    };
-                    Values[yValueItemes].unit = getSubCharArray(definition, start, i);
-                }
-            };
-            ++yValueItemes;
-            i--;
+        --i;
+      }
+      if (definition[i]=='C') {
+        //Coordinate
+        if (!curentCoordinate) { // first new Coordinate
+          curentCoordinate = new CoordinateItem;
+          curentCoordinate->setLast(NULL);
+          curentCoordinate->setNext(NULL);
+        }else{ //if more then one Coordinate
+          CoordinateItem *temp = new CoordinateItem;
+          temp->setLast(NULL);
+          temp->setNext(NULL);
+
+          curentCoordinate->setNext(temp);
+          temp->setLast(curentCoordinate);
+          curentCoordinate = temp;
         }
+
+        while (definition[i] != '<' and
+               definition[i] != '>' and
+               i <= length)
+        {
+          ++i;
+          switch (definition[i]) {
+            case '$': // Start of name part
+              curentCoordinate->setName(getSubCharArray(definition, i+1, length));break;
+            case '(': // Start of value part
+              curentCoordinate->setX(atof(getSubCharArray(definition, i+1, length)));break;
+            case ')': // Start of unit part
+              curentCoordinate->setY(atof(getSubCharArray(definition, i+1, length)));break;
+            default:
+              break;
+          }
+        }
+        --i;
+      }
     }
-}
+    if (definition[i]=='>') {
+      //Values
+      if (!curentValue) { // first new Value
+        curentValue = new ValueItem;
+        curentValue->setLast(NULL);
+        curentValue->setNext(NULL);
+        curentValue->setUnit(NULL);
+      }else{ //if more then one Value
+        ValueItem *temp = new ValueItem;
+        temp->setLast(NULL);
+        temp->setNext(NULL);
+        temp->setUnit(NULL);
 
-MenuStructure::~MenuStructure()
-{
-}
-
-char *MenuStructure::getNodeName()
-{
-    return Item.name;
-}
-
-void MenuStructure::setRelations(MenuStructure *parentNode, MenuStructure *childNode, MenuStructure *neighborNodeUp, MenuStructure *neighborNodeDown)
-{
-    this->setParent(parentNode);
-    this->setChild(childNode);
-    this->setNeighborUp(neighborNodeUp);
-    this->setNeighborDown(neighborNodeDown);
-}
-
-void MenuStructure::setParent(MenuStructure *parentNode)
-{
-    Item.parent = parentNode;
-}
-
-void MenuStructure::setChild(MenuStructure *childNode)
-{
-    Item.child = childNode;
-}
-
-void MenuStructure::setNeighborUp(MenuStructure *neighborNodeUp)
-{
-    Item.neighborUp = neighborNodeUp;
-}
-
-void MenuStructure::setNeighborDown(MenuStructure *neighborNodeDown)
-{
-    Item.neighborDown = neighborNodeDown;
-}
-
-//************************************************************
-void MenuStructure::setParameterName(char *name, int index)
-{
-    // Check if Pointer not NULL
-    if(Parameters) {
-        strncpy(Parameters[index].name, name, StringLength);
+        curentValue->setNext(temp);
+        temp->setLast(curentValue);
+        curentValue = temp;
+      }
+      ++i;
+      while (definition[i] != '<' and
+             definition[i] != '>' and
+             i <= length)
+      {
+        ++i;
+        switch (definition[i]) {
+          case '$': // Start of name part
+            curentValue->setName(getSubCharArray(definition, i+1, length));break;
+          case '|': // Start of value part
+            curentValue->setValue(atof(getSubCharArray(definition, i+1, length)));break;
+          case '/': // Start of unit part
+            curentValue->setUnit(getSubCharArray(definition, i+1, length));break;
+          default:
+            break;
+        }
+      }
+      --i;
     }
+  }
 }
 
-void MenuStructure::setParameterValue(float value, int index)
+// Deconstructor
+Menu::~Menu()
 {
-    // Check if Pointer not NULL
-    if(Parameters) {
-        Parameters[index].value = value;
-    }
 }
 
-void MenuStructure::setParameterUnit(char *unit, int index)
+void Menu::setRelation(Menu *parent, Menu *child, Menu *next, Menu *last)
 {
-    // Check if Pointer not NULL
-    if(Parameters) {
-        Parameters[index].unit = unit;
-    }
+  this->parent = parent;
+  this->child  = child;
+  this->next   = next;
+  this->last   = last;
 }
 
-void MenuStructure::setParameterStep(float step, int index)
+void Menu::setParent(Menu *parent)
 {
-    // Check if Pointer not NULL
-    if(Parameters) {
-        Parameters[index].step = step;
-    }
+  this->parent = parent;
 }
 
-void MenuStructure::setParameterIndex(int index)
+Menu *Menu::getParent()
 {
-    // Check if Pointer not NULL
-    if(Parameters) {
-        Parameters[index].index = index;
-    }
+  return this->parent;
 }
 
-char* MenuStructure::getParameterName(int index)
+void Menu::setChild(Menu *child)
 {
-    if(!Parameters) {
-        return emptyChar;
-    }
-    return Parameters[index].name;
+  this->child = child;
 }
 
-float MenuStructure::getParameterValue(int index)
+Menu *Menu::getChild()
 {
-    if(!Parameters) {
-        return 0;
-    }
-    return Parameters[index].value;}
-
-char* MenuStructure::getParameterUnit(int index)
-{
-    if(!Parameters) {
-        return emptyChar;
-    }
-    return Parameters[index].unit;}
-
-float MenuStructure::getParameterStep(int index)
-{
-    if(!Parameters) {
-        return 1;
-    }
-    return Parameters[index].step;
+  return this->child;
 }
 
-//************************************************************
-void MenuStructure::setValueName(char *name, int index)
+void Menu::setNext(Menu *next)
 {
-    // Check if Pointer not NULL
-    if (Values) {
-        strncpy(Values[index].name, name, StringLength);
-    }
+  this->next = next;
 }
 
-void MenuStructure::setValueValue(float value, int index)
+Menu *Menu::getNext()
 {
-    // Check if Pointer not NULL
-    if (Values) {
-        Values[index].value = value;
-    }
+  return this->next;
 }
 
-void MenuStructure::setValueUnit(char *unit, int index)
+void Menu::setLast(Menu *last)
 {
-    // Check if Pointer not NULL
-    if (Values) {
-        Values[index].unit = unit;
-    }
+  this->last = last;
 }
 
-void MenuStructure::setValueIndex(int index)
+Menu *Menu::getLast()
 {
-    // Check if Pointer not NULL
-    if (Values) {
-        Values[index].index = index;
-    }
+  return this->last;
 }
 
-char* MenuStructure::getValueName(int index)
+void Menu::setCurentParameter(ParameterItem *child)
 {
-    if(!Values) {
-        return emptyChar;
-    }
-    return Values[index].name;
+  this->curentParameter = child;
 }
 
-float MenuStructure::getValueValue(int index)
+ParameterItem *Menu::getCurentParameter()
 {
-    if(!Values) {
-        return 0;
-    }
-    return Values[index].value;
+  return this->curentParameter;
 }
 
-char* MenuStructure::getValueUnit(int index)
+void Menu::curentParameterLast()
 {
-    if(!Values[index].unit) {
-        return emptyChar;
-    }
-    return Values[index].unit;
+    curentParameter = curentParameter->getLast();
 }
 
-//************************************************************
-void MenuStructure::setCoordinateName(char *name, int index)
+void Menu::curentParameterNext()
 {
-    // Check if Pointer not NULL
-    if (Coordinates) {
-        strncpy(Coordinates[index].name, name, StringLength);
-
-    }
+    curentParameter = curentParameter->getNext();
 }
 
-void MenuStructure::setCoordinateX(int x, int index)
+void Menu::setCurentCoordinate(CoordinateItem *child)
 {
-    // Check if Pointer not NULL
-    if (Coordinates) {
-        Coordinates[index].x = x;
-    }
+  this->curentCoordinate = child;
 }
 
-void MenuStructure::setCoordinateY(int y, int index)
+CoordinateItem *Menu::getCurentCoordinate()
 {
-    // Check if Pointer not NULL
-    if (Coordinates) {
-        Coordinates[index].y = y;
-    }
+  return this->curentCoordinate;
 }
 
-char* MenuStructure::getCoordinateName(int index)
+void Menu::curentCoordinateLast()
 {
-    if (!Coordinates) {
-        return emptyChar;
-    }
-    return Coordinates[index].name;
+  curentCoordinate = curentCoordinate->getLast();
 }
 
-float MenuStructure::getCoordinateX(int index)
+void Menu::curentCoordinateNext()
 {
-    if (!Coordinates) {
-        return 0;
-    }
-    return Coordinates[index].x;
+  curentCoordinate = curentCoordinate->getNext();
 }
 
-float MenuStructure::getCoordinateY(int index)
+void Menu::setCurentValue(ValueItem *child)
 {
-    if (!Coordinates) {
-        return 0;
-    }
-    return Coordinates[index].y;
+  this->curentValue = child;
 }
-//************************************************************
+
+ValueItem *Menu::getCurentValue()
+{
+  return this->curentValue;
+}
+
+void Menu::curentValueLast()
+{
+  curentValue = curentValue->getLast();
+}
+
+void Menu::curentValueNext()
+{
+  curentValue = curentValue->getNext();
+}
+
+void Menu::printLine(char* text)
+{
+  char crcn[] = "\r\n\0";
+
+  this->print(text);
+  this->print(crcn);
+}
+
+void Menu::printMenu()
+{
+  char line[] = "---------";
+  this->printLine(this->getName());
+  this->printLine(line);
+
+  // Print Submenus
+  if (this->child) {
+    curentMenu = this->getChild();
+
+    this->printSubMenu();
+    while (curentMenu->getNext()) {
+      curentMenu = curentMenu->getNext();
+      this->printSubMenu();
+    }
+  }
+
+  // Print Parameters
+  if (this->curentParameter) {
+    while (this->curentParameter->getLast()) {
+      curentParameter = curentParameter->getLast();
+    }
+    this->printParameter();
+
+    while (curentParameter->getNext()) {
+      curentParameter = curentParameter->getNext();
+      this->printParameter();
+    }
+  }
+
+  if (this->curentCoordinate) {
+
+    while (this->curentCoordinate->getLast()) {
+      curentCoordinate = curentCoordinate->getLast();
+    }
+    this->printCoordinate();
+
+    while (curentCoordinate->getNext()) {
+      curentCoordinate = curentCoordinate->getNext();
+      this->printCoordinate();
+    }
+  }
+
+  if (this->curentValue) {
+
+    while (this->curentValue->getLast()) {
+      curentValue = curentValue->getLast();
+    }
+
+    this->printValue();
+
+    while (curentValue->getNext()) {
+      curentValue = curentValue->getNext();
+      this->printValue();
+    }
+  }
+}
